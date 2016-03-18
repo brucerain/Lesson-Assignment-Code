@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from cs231n.classifiers.softmax import *
 
 
 class TwoLayerNet(object):
@@ -56,7 +57,7 @@ class TwoLayerNet(object):
     If y is None, return a matrix scores of shape (N, C) where scores[i, c] is
     the score for class c on input X[i].
 
-    If y is not None, instead return a tuple of:
+     y is not None, instead return a tuple of:
     - loss: Loss (data loss and regularization loss) for this batch of training
       samples.
     - grads: Dictionary mapping parameter names to gradients of those parameters
@@ -66,7 +67,9 @@ class TwoLayerNet(object):
     W1, b1 = self.params['W1'], self.params['b1']
     W2, b2 = self.params['W2'], self.params['b2']
     N, D = X.shape
-
+    hidden = W1.shape[1]
+    C = b2.shape[0]
+    H = W2.shape[0]
     # Compute the forward pass
     scores = None
     #############################################################################
@@ -74,7 +77,9 @@ class TwoLayerNet(object):
     # Store the result in the scores variable, which should be an array of      #
     # shape (N, C).                                                             #
     #############################################################################
-    pass
+    H_score = X.dot(W1) + b1    
+    H_scores = np.maximum(np.zeros((N,H)), H_score)
+    scores = H_scores.dot(W2) + b2 
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
@@ -92,23 +97,49 @@ class TwoLayerNet(object):
     # classifier loss. So that your results match ours, multiply the            #
     # regularization loss by 0.5                                                #
     #############################################################################
-    pass
+    row_max = np.max(scores, axis=1)
+    max_scores = np.tile(row_max, (C,1)).T
+    scores_l = scores - max_scores            #(N,C)
+    sum_exp = np.sum(np.exp(scores_l),axis=1)
+    correct_scores = scores_l[np.arange(N),y]
+    loss = np.sum(np.log(sum_exp)-correct_scores)
+    loss = loss/N + 0.5*reg*(np.sum(W1*W1) + np.sum(W2*W2))
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
 
     # Backward pass: compute gradients
     grads = {}
-    #############################################################################
+    #######################################################:######################
     # TODO: Compute the backward pass, computing the derivatives of the weights #
     # and biases. Store the results in the grads dictionary. For example,       #
     # grads['W1'] should store the gradient on W1, and be a matrix of same size #
     #############################################################################
-    pass
+    sum_exp = np.tile(sum_exp,(C,1)).T
+    matr = np.exp(scores_l)/sum_exp  #(N,c)
+    matr[np.arange(N),y] -=1
+    dW2 = H_scores.T.dot(matr)   #(H,C)
+    dW2 = dW2/N + reg * W2
+    dHid = matr.dot(W2.T)        #(N,H)
+    db2 = matr.T.dot(np.full((N,),1,dtype="int64")) #(C,)
+    db2 = db2/N
+   
+    ## Back propagation > ReLU Unit Please remeber this part ### 
+    H_scores[H_scores>0] =1 
+    H_scores[H_scores<=0] =0
+    dHid = H_scores * dHid
+    dW1 = X.T.dot(dHid)  # (D,N) * (N,H) = (d,h)
+    dW1 = dW1/N + reg * W1
+    db1 = dHid.T.dot(np.full((N,),1,dtype="int64"))    # (H,) 
+    db1 = db1/N
+    grads['W1'] = dW1
+    grads['b1'] = db1
+    grads['W2'] = dW2
+    grads['b2'] = db2
+
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
-
     return loss, grads
 
   def train(self, X, y, X_val, y_val,
@@ -148,7 +179,9 @@ class TwoLayerNet(object):
       # TODO: Create a random minibatch of training data and labels, storing  #
       # them in X_batch and y_batch respectively.                             #
       #########################################################################
-      pass
+      batch_list = np.random.choice(num_train, batch_size, replace =True)
+      X_batch = X[batch_list,:]
+      y_batch = y[batch_list]
       #########################################################################
       #                             END OF YOUR CODE                          #
       #########################################################################
@@ -163,7 +196,10 @@ class TwoLayerNet(object):
       # using stochastic gradient descent. You'll need to use the gradients   #
       # stored in the grads dictionary defined above.                         #
       #########################################################################
-      pass
+      self.params["W2"] -= learning_rate * grads["W2"]
+      self.params["W1"] -= learning_rate * grads["W1"]
+      self.params["b2"] -= learning_rate * grads["b2"]
+      self.params["b1"] -= learning_rate * grads["b1"]
       #########################################################################
       #                             END OF YOUR CODE                          #
       #########################################################################
@@ -208,7 +244,12 @@ class TwoLayerNet(object):
     ###########################################################################
     # TODO: Implement this function; it should be VERY simple!                #
     ###########################################################################
-    pass
+    hlayer = X.dot(self.params["W1"]) + self.params["b1"]
+    N,D = X.shape
+    H = self.params["b1"].shape[0]
+    h_layer = np.maximum(np.zeros((N,H)), hlayer)    
+    result  = h_layer.dot(self.params["W2"] + self.params["b2"])
+    y_pred = np.argmax(result,axis=1)
     ###########################################################################
     #                              END OF YOUR CODE                           #
     ###########################################################################
