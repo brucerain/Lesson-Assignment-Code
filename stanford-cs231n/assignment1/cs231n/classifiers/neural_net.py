@@ -244,10 +244,8 @@ class TwoLayerNet(object):
     ###########################################################################
     # TODO: Implement this function; it should be VERY simple!                #
     ###########################################################################
-    hlayer = X.dot(self.params["W1"]) + self.params["b1"]
-    N,D = X.shape
-    H = self.params["b1"].shape[0]
-    h_layer = np.maximum(np.zeros((N,H)), hlayer)    
+    f = lambda x: np.maximum(0,x)
+    hlayer = f(X.dot(self.params["W1"]) + self.params["b1"])
     result  = h_layer.dot(self.params["W2"] + self.params["b2"])
     y_pred = np.argmax(result,axis=1)
     ###########################################################################
