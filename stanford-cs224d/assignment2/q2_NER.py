@@ -19,10 +19,10 @@ class Config(object):
   instantiation.
   """
   embed_size = 50
-  batch_size = 64
+  batch_size = 100
   label_size = 5
   hidden_size = 100
-  max_epochs = 1 #24 
+  max_epochs = 24 
   early_stopping = 2
   dropout = 0.9
   lr = 0.001
@@ -193,7 +193,8 @@ class NERModel(LanguageModel):
       w_shape = (w_dim, self.config.hidden_size)
       W = tf.get_variable("W", w_shape)
       b1_shape = (self.config.hidden_size,)
-      b1 = tf.get_variable("b1", b1_shape)
+      b1 = tf.Variable(tf.zeros(b1_shape),"b1") 
+      #b1 = tf.get_variable("b1", b1_shape)
       out_layer1 = tf.tanh(tf.matmul(window, W) + b1)
       out_layer1_drop = tf.nn.dropout(out_layer1, self.dropout_placeholder) 
 
@@ -202,11 +203,12 @@ class NERModel(LanguageModel):
       u_dim = (self.config.hidden_size, self.config.label_size)
       U = tf.get_variable("U",u_dim)
       b2_shape = (self.config.label_size,)
-      b2 = tf.get_variable("b2", b2_shape) 
+      #b2 = tf.get_variable("b2", b2_shape)
+      b2 = tf.Variable(tf.zeros(b2_shape), "b2") 
       output = tf.matmul(out_layer1_drop, U) + b2
 
     l2_loss = self.config.lr *(tf.nn.l2_loss(W) + tf.nn.l2_loss(U)) 
-    tf.add_to_collection(tf.GraphKeys.REGULARIZATION_LOSSES, l2_loss)
+    tf.add_to_collection("total_loss", l2_loss)
     ### END YOUR CODE
     return output 
 
@@ -222,7 +224,7 @@ class NERModel(LanguageModel):
     """
     ### YOUR CODE HERE
     loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y, self.labels_placeholder))
-    #loss += tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+    loss += tf.get_collection("total_loss")[0]
     ### END YOUR CODE
     return loss
 
@@ -254,7 +256,7 @@ class NERModel(LanguageModel):
   def __init__(self, config):
     """Constructs the network using the helper functions defined above."""
     self.config = config
-    self.load_data(debug=True)
+    self.load_data(debug=False)
     self.add_placeholders()
     window = self.add_embedding()
     y = self.add_model(window)
